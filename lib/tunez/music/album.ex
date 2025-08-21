@@ -6,7 +6,7 @@ defmodule Tunez.Music.Album do
     repo Tunez.Repo
 
     references do
-      reference :artist, index?: true
+      reference :artist, index?: true, on_delete: :delete
     end
   end
 
@@ -20,6 +20,22 @@ defmodule Tunez.Music.Album do
     update :update do
       accept [:name, :year_released, :cover_image_url]
     end
+  end
+
+  validations do
+    validate numericality(:year_released,
+               greater_than: 1950,
+               less_than_or_equal_to: &__MODULE__.next_year/0
+             ),
+             where: [present(:year_released)],
+             message: "must be between 1950 and next year"
+
+    validate match(
+               :cover_image_url,
+               ~r"^(https://|/images/).+(\.png|\.jpg)$"
+             ),
+             where: [changing(:cover_image_url)],
+             message: "must start with https:// or /images/"
   end
 
   attributes do
@@ -44,4 +60,11 @@ defmodule Tunez.Music.Album do
       allow_nil? false
     end
   end
+
+  identities do
+    identity :unique_album_names_per_artist, [:name, :artist_id],
+      message: "already exists for this artist"
+  end
+
+  def next_year, do: Date.utc_today().year + 1
 end
